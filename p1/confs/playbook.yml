@@ -1,0 +1,75 @@
+---
+- name: Prepare k3s to the installation
+  hosts: all
+  become: true
+  tasks:
+    - name: Get the k3s installation script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s
+        mode: "0755"
+
+- name: Install k3s on the server
+  hosts: server
+  become: true
+  tasks:
+    - name: Install k3s as the server node
+      ansible.builtin.command:
+        cmd: "sh /tmp/k3s"
+        creates: /etc/rancher/k3s/k3s.yaml
+      environment:
+        INSTALL_K3S_EXEC: "--flannel-iface=eth1"
+
+    - name: Create directory .kube
+      ansible.builtin.file:
+        path: ~{{ ansible_user }}/.kube
+        state: directory
+        owner: "{{ ansible_user }}"
+        mode: "u=rwx,g=rx,o="
+
+    - name: Copy config file to user home directory
+      ansible.builtin.copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: ~{{ ansible_user }}/.kube/config
+        remote_src: true
+        owner: "{{ ansible_user }}"
+        mode: "u=rw,g=,o="
+
+    - name: Configure default KUBECONFIG for user
+      ansible.builtin.lineinfile:
+        path: ~{{ ansible_user }}/.bashrc
+        regexp: 'export KUBECONFIG=~/.kube/config'
+        line: 'export KUBECONFIG=~/.kube/config'
+        state: present
+
+    - name: Configure kubectl autocomplete
+      ansible.builtin.lineinfile:
+        path: ~{{ ansible_user }}/.bashrc
+        regexp: '\.\s+<\(kubectl completion bash\)'
+        line: ". <(kubectl completion bash)"
+
+- name: Extract the server k3s token
+  hosts: server
+  become: true
+  tasks:
+    - name: Get the server k3s token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token
+
+    - name: Store the server k3s token
+      ansible.builtin.set_fact:
+        token: "{{ k3s_token.content | b64decode | regex_replace('\n', '') }}"
+
+- name: Install k3s to the workers
+  hosts: workers
+  become: true
+  tasks:
+    - name: Install k3s as the worker node
+      ansible.builtin.command:
+        cmd: "sh /tmp/k3s"
+        creates: /etc/rancher/k3s/k3s.yaml
+      environment:
+        K3S_URL: https://192.168.56.110:6443
+        K3S_TOKEN: "{{ hostvars[groups['server'][0]].token }}"
+        INSTALL_K3S_EXEC: "--flannel-iface=eth1"

@@ -3,7 +3,7 @@
   hosts: localhost
   become: true
   tasks:
-    - name: Create keyrings folder
+    - name: Ensure keyrings folder exist
       ansible.builtin.file:
         path: /etc/apt/keyrings
         state: directory
@@ -11,21 +11,20 @@
         owner: root
         group: root
 
-    - name: Add docker apt repository key
+    - name: Add Docker APT repository key
       ansible.builtin.get_url:
         url: https://download.docker.com/linux/debian/gpg
         dest: /etc/apt/keyrings/docker.asc
         mode: '0644'
-        force: true
 
-    - name: Add apt repository
+    - name: Add Docker APT repository
       ansible.builtin.apt_repository:
         repo: "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian/ {{ ansible_distribution_release }} stable"
         state: present
         update_cache: true
         filename: docker
 
-    - name: Install docker
+    - name: Install Docker
       ansible.builtin.apt:
         pkg:
           - docker-ce
@@ -35,18 +34,18 @@
           - docker-compose-plugin
         state: present
 
-    - name: Give docker right to the user
+    - name: Add the current user to the docker group
       ansible.builtin.user:
         name: "{{ ansible_env.SUDO_USER or ansible_user_id }}"
         groups: docker
         append: true
 
-    - name: Start docker service
+    - name: Ensure Docker service is running
       ansible.builtin.service:
         name: docker
         state: started
 
-- name: Install miscellaneous kubernetes packages
+- name: Install miscellaneous Kubernetes packages
   hosts: localhost
   become: true
   tasks:
@@ -55,7 +54,7 @@
         name: python3-kubernetes
         state: present
 
-    - name: Get the latest stable version of kubernetes
+    - name: Retrieve the latest stable Kubernetes version
       ansible.builtin.uri:
         url: https://dl.k8s.io/release/stable.txt
         return_content: true
@@ -71,13 +70,13 @@
   hosts: localhost
   become: true
   tasks:
-    - name: Get the k3d installation script
+    - name: Download the k3d installation script
       ansible.builtin.get_url:
         url: https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh
         dest: /tmp/k3d
         mode: "0755"
 
-    - name: Install k3d on the machine
+    - name: Install k3d
       ansible.builtin.command:
         cmd: "bash /tmp/k3d"
         creates: /usr/local/bin/k3d

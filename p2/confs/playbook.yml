@@ -4,13 +4,13 @@
   become: true
   gather_facts: false
   tasks:
-    - name: Get the k3s installation script
+    - name: Download the k3s installation script
       ansible.builtin.get_url:
         url: https://get.k3s.io
         dest: /tmp/k3s
         mode: "0755"
 
-- name: Install k3s on the server
+- name: Install k3s
   hosts: server
   become: true
   gather_facts: false
@@ -54,13 +54,13 @@
   hosts: server
   gather_facts: false
   tasks:
-    - name: "Copy the manifest files to the server"
+    - name: Copy the manifest files to the server
       ansible.builtin.copy:
         src: "manifests/"
         dest: ~{{ ansible_user }}/manifests
         mode: preserve
 
-    - name: "Apply the manifests to the cluster"
+    - name: Apply the manifests to the cluster
       ansible.builtin.command:
         cmd: "kubectl apply -f manifests"
       changed_when: false

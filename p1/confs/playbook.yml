@@ -4,7 +4,7 @@
   become: true
   gather_facts: false
   tasks:
-    - name: Get the k3s installation script
+    - name: Download the k3s installation script
       ansible.builtin.get_url:
         url: https://get.k3s.io
         dest: /tmp/k3s
@@ -55,7 +55,7 @@
   become: true
   gather_facts: false
   tasks:
-    - name: Get the server k3s token
+    - name: Retrieve the server k3s token
       ansible.builtin.slurp:
         src: /var/lib/rancher/k3s/server/node-token
       register: k3s_token

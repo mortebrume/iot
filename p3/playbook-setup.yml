@@ -1,4 +1,20 @@
 ---
+- name: Determine architecture and perform setup
+  hosts: localhost
+  become: true
+  vars:
+    arch_mapping:
+      x86_64: "amd64"
+      aarch64: "arm64"
+  tasks:
+    - name: Determine architecture mapping
+      ansible.builtin.set_fact:
+        system_arch: "{{ arch_mapping[ansible_architecture] | default('unknown') }}"
+
+    - name: Debug the mapped architecture
+      ansible.builtin.debug:
+        msg: "The system architecture is mapped to {{ system_arch }}"
+
 - name: Install docker on the machine
   hosts: localhost
   become: true
@@ -19,7 +35,8 @@
 
     - name: Add Docker APT repository
       ansible.builtin.apt_repository:
-        repo: "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian/ {{ ansible_distribution_release }} stable"
+        repo: "deb [arch={{ system_arch }} signed-by=/etc/apt/keyrings/docker.asc]\
+          https://download.docker.com/linux/debian/ {{ ansible_distribution_release }} stable"
         state: present
         update_cache: true
         filename: docker
@@ -62,9 +79,25 @@
 
     - name: Install kubectl
       ansible.builtin.get_url:
-        url: https://dl.k8s.io/release/{{ version.content }}/bin/linux/arm64/kubectl
+        url: https://dl.k8s.io/release/{{ version.content }}/bin/linux/{{ system_arch }}/kubectl
         dest: /usr/bin/
         mode: "0755"
+
+    - name: Configure kubectl autocomplete
+      ansible.builtin.lineinfile:
+        path: ~{{ ansible_env.SUDO_USER or ansible_user_id }}/.bashrc
+        regexp: '\.\s+<\(kubectl completion bash\)'
+        line: ". <(kubectl completion bash)"
+
+    - name: Download k9s package
+      ansible.builtin.get_url:
+        url: https://github.com/derailed/k9s/releases/download/v0.32.7/k9s_linux_{{ system_arch }}.deb
+        dest: /tmp/k9s.deb
+        mode: "0755"
+
+    - name: Install the k9s package
+      ansible.builtin.apt:
+        deb: /tmp/k9s.deb
 
 - name: Install k3d
   hosts: localhost

@@ -46,3 +46,40 @@
       kubernetes.core.k8s:
         state: present
         src: confs/ingress.yml
+
+
+- name: Retrieve the ArgoCD admin password
+  hosts: localhost
+  become: false
+  tasks:
+    - name: Get the ArgoCD secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: argocd-initial-admin-secret
+        namespace: argocd
+      register: secret_data
+
+    - name: Decode the secret
+      ansible.builtin.set_fact:
+        admin_password: "{{ secret_data.resources[0].data['password'] | b64decode }}"
+
+    - name: Echo the decoded secret with formatting
+      ansible.builtin.debug:
+        msg: "ArgoCD admin password: {{ admin_password }}"
+
+- name: Deploy the managed ArgoCD app
+  hosts: localhost
+  become: false
+  tasks:
+    - name: Create the dev namespace
+      kubernetes.core.k8s:
+        name: dev
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Apply the app manifest
+      kubernetes.core.k8s:
+        state: present
+        src: confs/playground-app.yml

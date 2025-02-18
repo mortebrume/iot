@@ -1,15 +1,20 @@
 ---
 - name: Create the k3d cluster
-  hosts: localhost
+  hosts: all
   become: false
   tasks:
     - name: Create the k3d cluster
       ansible.builtin.command:
         cmd: "k3d cluster create iot --api-port 6550 -p '8081:80@loadbalancer'"
         creates: ~{{ ansible_user_id }}/.kube/config
+    - name: Copy the manifest files to the server
+      ansible.builtin.copy:
+        src: "confs/"
+        dest: ~{{ ansible_user }}/confs
+        mode: preserve
 
 - name: Create an ArgoCD stack
-  hosts: localhost
+  hosts: all
   become: false
   vars:
     argocd_url: "https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
@@ -49,7 +54,7 @@
 
 
 - name: Retrieve the ArgoCD admin password
-  hosts: localhost
+  hosts: all
   become: false
   tasks:
     - name: Get the ArgoCD secret
@@ -69,7 +74,7 @@
         msg: "ArgoCD admin password: {{ admin_password }}"
 
 - name: Deploy the managed ArgoCD app
-  hosts: localhost
+  hosts: all
   become: false
   tasks:
     - name: Create the dev namespace

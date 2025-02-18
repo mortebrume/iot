@@ -1,6 +1,6 @@
 ---
 - name: Determine architecture and perform setup
-  hosts: localhost
+  hosts: all
   become: true
   vars:
     arch_mapping:
@@ -16,7 +16,7 @@
         msg: "The system architecture is mapped to {{ system_arch }}"
 
 - name: Install docker on the machine
-  hosts: localhost
+  hosts: all
   become: true
   tasks:
     - name: Ensure keyrings folder exist
@@ -35,7 +35,7 @@
 
     - name: Add Docker APT repository
       ansible.builtin.apt_repository:
-        repo: "deb [arch={{ system_arch }} signed-by=/etc/apt/keyrings/docker.asc]\
+        repo: "deb [arch={{ system_arch }} signed-by=/etc/apt/keyrings/docker.asc] \
           https://download.docker.com/linux/debian/ {{ ansible_distribution_release }} stable"
         state: present
         update_cache: true
@@ -63,7 +63,7 @@
         state: started
 
 - name: Install miscellaneous Kubernetes packages
-  hosts: localhost
+  hosts: all
   become: true
   tasks:
     - name: Install kubernetes-python
@@ -100,7 +100,7 @@
         deb: /tmp/k9s.deb
 
 - name: Install k3d
-  hosts: localhost
+  hosts: all
   become: true
   tasks:
     - name: Download the k3d installation script
